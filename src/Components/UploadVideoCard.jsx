@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSelector } from "react-redux";
-import {
-  FaUpload,
-  FaSave,
-  FaCamera,
-} from "react-icons/fa";
+import { FaUpload, FaSave, FaCamera } from "react-icons/fa";
 import axios from "axios";
 import { successToast, errorToast } from "../Utils/toastConfig";
 
@@ -48,11 +44,7 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode,
-        },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode },
         audio: true,
       });
       streamRef.current = stream;
@@ -78,32 +70,15 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
     canvas.width = 720;
     canvas.height = 1280;
 
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-
-    const videoAspect = videoWidth / videoHeight;
-    const canvasAspect = canvas.width / canvas.height;
-
-    let sx = 0, sy = 0, sWidth = videoWidth, sHeight = videoHeight;
-
-    if (videoAspect > canvasAspect) {
-      const newWidth = sHeight * canvasAspect;
-      sx = (sWidth - newWidth) / 2;
-      sWidth = newWidth;
-    } else {
-      const newHeight = sWidth / canvasAspect;
-      sy = (sHeight - newHeight) / 2;
-      sHeight = newHeight;
-    }
-
-    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob((blob) => {
-      const file = new File([blob], `captured_${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-      setVideoFile(file);
-      setIsUploaded(false);
+      if (blob) {
+        const file = new File([blob], `captured_${Date.now()}.jpg`, { type: "image/jpeg" });
+        setVideoFile(file);
+        setIsUploaded(false);
+        console.log("Captured photo:", file);
+      }
     }, "image/jpeg");
   };
 
@@ -117,29 +92,8 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
     canvas.height = 1280;
 
     const drawFrame = () => {
-      ctx.save();
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const videoWidth = video.videoWidth;
-      const videoHeight = video.videoHeight;
-      const videoAspect = videoWidth / videoHeight;
-      const canvasAspect = canvas.width / canvas.height;
-
-      let sx = 0, sy = 0, sWidth = videoWidth, sHeight = videoHeight;
-
-      if (videoAspect > canvasAspect) {
-        const newWidth = sHeight * canvasAspect;
-        sx = (sWidth - newWidth) / 2;
-        sWidth = newWidth;
-      } else {
-        const newHeight = sWidth / canvasAspect;
-        sy = (sHeight - newHeight) / 2;
-        sHeight = newHeight;
-      }
-
-      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-      ctx.restore();
-
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       animationFrameIdRef.current = requestAnimationFrame(drawFrame);
     };
 
@@ -156,9 +110,7 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          recordedChunksRef.current.push(e.data);
-        }
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
       };
 
       recorder.onstop = () => {
@@ -166,15 +118,14 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
         const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
 
         if (blob.size === 0) {
-          errorToast("Recorded video is empty (0 bytes).");
+          errorToast("Recorded video is empty.");
           return;
         }
 
-        const file = new File([blob], `recorded_${Date.now()}.webm`, {
-          type: "video/webm",
-        });
+        const file = new File([blob], `recorded_${Date.now()}.webm`, { type: "video/webm" });
         setVideoFile(file);
         setRecording(false);
+        console.log("Recorded video:", file);
       };
 
       recorder.start();
@@ -197,7 +148,11 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file && (file.type.startsWith("video/") || file.type.startsWith("image/"))) {
+    console.log("Selected file:", file);
+
+    if (!file) return;
+
+    if (file.type.startsWith("video/") || file.type.startsWith("image/")) {
       setVideoFile(file);
       setIsUploaded(false);
     } else {
@@ -207,6 +162,7 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
 
   const handleSubmit = async () => {
     if (!videoFile) return errorToast("Please provide a video or photo");
+    if (!doctorId) return errorToast("Missing doctor ID");
     setIsUploading(true);
 
     const formData = new FormData();
@@ -233,6 +189,7 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
       successToast("Upload successful");
       setTimeout(() => setShowVideoForm(false), 3000);
     } catch (err) {
+      console.error("Upload failed:", err.response || err.message);
       errorToast("Upload failed");
     } finally {
       setIsUploading(false);
@@ -280,19 +237,14 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
 
         <div className="mb-4">
           {mode === "upload" && (
-            <label
-              htmlFor="media-upload"
-              className="block border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-500 cursor-pointer hover:bg-gray-50"
-            >
-              {videoFile ? videoFile.name : "📁 Upload media (image or video)"}
+            <div className="border border-gray-300 rounded-md p-2">
               <input
-                id="media-upload"
                 type="file"
                 accept="video/*,image/*"
                 onChange={handleFileChange}
-                className="hidden"
+                className="block w-full text-sm"
               />
-            </label>
+            </div>
           )}
 
           {(mode === "photo" || mode === "video") && (
@@ -381,9 +333,7 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
               <FaSave /> {isUploading ? "Uploading..." : "Upload"}
             </button>
           ) : (
-            <p className="text-sm text-green-700 font-medium mt-2">
-              ✅ Upload successful!
-            </p>
+            <p className="text-sm text-green-700 font-medium mt-2">✅ Upload successful!</p>
           )}
         </div>
       </div>
