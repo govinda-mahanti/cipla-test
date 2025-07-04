@@ -11,7 +11,7 @@ import { successToast, errorToast } from "../Utils/toastConfig";
 const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
   const token = useSelector((state) => state.auth.token);
 
-  const [mode, setMode] = useState("upload"); // upload | photo | video
+  const [mode, setMode] = useState("upload");
   const [videoFile, setVideoFile] = useState(null);
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -108,89 +108,86 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
   };
 
   const startRecording = () => {
-  const video = videoRef.current;
-  const canvas = canvasRef.current;
-  if (!video || !canvas || !streamRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || !streamRef.current) return;
 
-  const ctx = canvas.getContext("2d");
-  canvas.width = 720;
-  canvas.height = 1280;
+    const ctx = canvas.getContext("2d");
+    canvas.width = 720;
+    canvas.height = 1280;
 
-  const drawFrame = () => {
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const drawFrame = () => {
+      ctx.save();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const videoWidth = video.videoWidth;
-    const videoHeight = video.videoHeight;
-    const videoAspect = videoWidth / videoHeight;
-    const canvasAspect = canvas.width / canvas.height;
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      const videoAspect = videoWidth / videoHeight;
+      const canvasAspect = canvas.width / canvas.height;
 
-    let sx = 0, sy = 0, sWidth = videoWidth, sHeight = videoHeight;
+      let sx = 0, sy = 0, sWidth = videoWidth, sHeight = videoHeight;
 
-    if (videoAspect > canvasAspect) {
-      const newWidth = sHeight * canvasAspect;
-      sx = (sWidth - newWidth) / 2;
-      sWidth = newWidth;
-    } else {
-      const newHeight = sWidth / canvasAspect;
-      sy = (sHeight - newHeight) / 2;
-      sHeight = newHeight;
-    }
-
-    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
-
-    animationFrameIdRef.current = requestAnimationFrame(drawFrame);
-  };
-
-  drawFrame();
-
-  const canvasStream = canvas.captureStream(30);
-  const audioTrack = streamRef.current.getAudioTracks()[0];
-  canvasStream.addTrack(audioTrack);
-
-  recordedChunksRef.current = [];
-
-  // Wait a short time to ensure canvas is drawing
-  setTimeout(() => {
-    const recorder = new MediaRecorder(canvasStream, { mimeType: "video/webm" });
-    mediaRecorderRef.current = recorder;
-
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        recordedChunksRef.current.push(e.data);
-      }
-    };
-
-    recorder.onstop = () => {
-      cancelAnimationFrame(animationFrameIdRef.current);
-      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-
-      console.log("Recorded video size:", blob.size);
-      if (blob.size === 0) {
-        errorToast("Recorded video is empty (0 bytes).");
-        return;
+      if (videoAspect > canvasAspect) {
+        const newWidth = sHeight * canvasAspect;
+        sx = (sWidth - newWidth) / 2;
+        sWidth = newWidth;
+      } else {
+        const newHeight = sWidth / canvasAspect;
+        sy = (sHeight - newHeight) / 2;
+        sHeight = newHeight;
       }
 
-      const file = new File([blob], `recorded_${Date.now()}.webm`, {
-        type: "video/webm",
-      });
-      setVideoFile(file);
-      setRecording(false);
+      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+
+      animationFrameIdRef.current = requestAnimationFrame(drawFrame);
     };
 
-    recorder.start();
-    setRecording(true);
+    drawFrame();
+
+    const canvasStream = canvas.captureStream(30);
+    const audioTrack = streamRef.current.getAudioTracks()[0];
+    canvasStream.addTrack(audioTrack);
+
+    recordedChunksRef.current = [];
 
     setTimeout(() => {
-      if (recorder.state === "recording") {
-        recorder.stop();
-        successToast("Recording stopped after max duration (40s)");
-      }
-    }, 40000);
-  }, 300); // Short delay (300ms) before starting recording
-};
+      const recorder = new MediaRecorder(canvasStream, { mimeType: "video/webm" });
+      mediaRecorderRef.current = recorder;
 
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        cancelAnimationFrame(animationFrameIdRef.current);
+        const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+
+        if (blob.size === 0) {
+          errorToast("Recorded video is empty (0 bytes).");
+          return;
+        }
+
+        const file = new File([blob], `recorded_${Date.now()}.webm`, {
+          type: "video/webm",
+        });
+        setVideoFile(file);
+        setRecording(false);
+      };
+
+      recorder.start();
+      setRecording(true);
+
+      setTimeout(() => {
+        if (recorder.state === "recording") {
+          recorder.stop();
+          successToast("Recording stopped after max duration (40s)");
+        }
+      }, 40000);
+    }, 300);
+  };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current?.state === "recording") {
@@ -337,11 +334,20 @@ const UploadVideoCard = ({ setShowVideoForm, doctorName, doctorId }) => {
           <div className="mt-2">
             <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
             {videoFile.type.startsWith("video/") ? (
-              <video
-                controls
-                src={URL.createObjectURL(videoFile)}
-                className="w-full rounded-md border border-gray-300"
-              />
+              <>
+                <video
+                  controls
+                  src={URL.createObjectURL(videoFile)}
+                  className="w-full rounded-md border border-gray-300"
+                />
+                <a
+                  href={URL.createObjectURL(videoFile)}
+                  download={videoFile.name || "video.webm"}
+                  className="mt-2 inline-block bg-blue-600 text-white px-4 py-1 rounded-md text-sm hover:bg-blue-700"
+                >
+                  ⬇️ Download Video
+                </a>
+              </>
             ) : (
               <img
                 src={URL.createObjectURL(videoFile)}
