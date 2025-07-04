@@ -4,7 +4,7 @@ import Home from "./Pages/Home";
 import Layout from "./Pages/Layout";
 import AllDoctors from "./Pages/AllDoctors";
 import { ToastContainer } from "react-toastify";
-
+import Upload from "./Components/Upload";
 function App() {
   return (
     <>
@@ -14,6 +14,7 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Home />} />
             <Route path="/all-doctors" element={<AllDoctors />} />
+            <Route path="/upload" element={<Upload/>}/>
           </Route>
         </Routes>
       </BrowserRouter>
